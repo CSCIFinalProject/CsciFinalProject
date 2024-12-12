@@ -21,7 +21,7 @@ public class INode {
 
     public INode() {
         fileName = null;
-        fileSize = -1;
+        fileSize = 1;
         blockPointers = new int[NUM_BLOCK_POINTERS];
         for (int i = 0; i < blockPointers.length; i++) {
             blockPointers[i] = -1;
@@ -167,5 +167,4 @@ public class INode {
         };
     }
 }
-
 

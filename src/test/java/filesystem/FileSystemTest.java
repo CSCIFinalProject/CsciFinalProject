@@ -14,7 +14,7 @@ class FileSystemTest {
     @BeforeEach
     void setUp() throws IOException {
         // Initialize the FileSystem with 3 disks for RAID 0
-        fileSystem = new FileSystem(3);
+        fileSystem = new FileSystem(2);
     }
 
     @Test

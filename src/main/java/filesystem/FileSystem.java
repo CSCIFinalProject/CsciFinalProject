@@ -4,13 +4,16 @@ import java.io.IOException;
 
 public class FileSystem {
     // Array of disks for RAID 0
-    public Disk[] disks;
-    public Disk diskDevice;
-    public int iNodeNumber;
-    public int fileDescriptor;
-    public INode iNodeForFile;
-    public int numDisks;
+    private Disk[] disks;
+    protected Disk diskDevice;
+    private int iNodeNumber;
+    private int fileDescriptor;
+    private INode iNodeForFile;
+    private int numDisks;
 
+    //Constructor to initialize the file system with the specified number of disks
+    //Set up the RAID 0 disks
+    //Formats both the RAID disks and the main disk device.
     public FileSystem(int numDisks) throws IOException {
         this.numDisks = numDisks;
 
@@ -23,12 +26,12 @@ public class FileSystem {
         }
 
         diskDevice = new Disk();
-        // This Format the main disk device
+        // This Formats the main disk device
         diskDevice.format();
     }
 
     public FileSystem() throws IOException {
-        this(2); // Default to a single disk
+        this(2);
     }
 
     /***
@@ -212,45 +215,63 @@ public class FileSystem {
      */
     public void write(int fileDescriptor, String data) throws IOException {
         System.out.println("Status... Now Attempting to write data to file with descriptor: " + fileDescriptor);
+        //// Log the start of the write operation with the file descriptor.
 
         if (fileDescriptor < 0 || fileDescriptor >= Disk.NUM_INODES) {
             throw new IOException("Invalid file descriptor: " + fileDescriptor);
         }
+        // Validate the file descriptor to ensure it's within a valid range.
 
         if (data == null || data.isEmpty()) {
             throw new IllegalArgumentException("Data to write cannot be null or empty");
         }
+        //// Validate that the data is not null or empty before proceeding.
 
         byte[] dataBytes = data.getBytes();
+        //Convert the data string into a byte array.
+
         int totalBlocks = (int) Math.ceil((double) dataBytes.length / Disk.BLOCK_SIZE);
+        //Calculate the number of blocks needed to store the data.
+
         System.out.println("Data size: " + dataBytes.length + " bytes, requiring " + totalBlocks + " blocks.");
+        // Log the data size and the number of blocks required.
 
         int[] allocatedBlocks = allocateBlocksForFile(fileDescriptor, dataBytes.length);
+        // Allocate blocks on the disk for the file using the file descriptor and data size.
 
         if (allocatedBlocks.length < totalBlocks) {
             throw new IOException("Not enough blocks available to write data");
         }
+        // Check if enough blocks have been allocated; otherwise, throw an error.
 
         int offset = 0;
         for (int i = 0; i < totalBlocks; i++) {
-            // Disk for this stripe
+            // Initialize the offset for tracking the data written so far.
+
             int diskIndex = i % numDisks;
-            if (diskIndex < 0 || diskIndex >= numDisks) {
-                throw new IOException("Invalid disk index: " + diskIndex);
-            }
+            // Determine the disk index for the current block (striping across disks).
 
             int blockPointer = allocatedBlocks[i];
-            if (blockPointer < 0 || blockPointer >= Disk.NUM_BLOCKS) {
-                throw new IOException("Invalid block pointer: " + blockPointer);
-            }
+            // Get the block pointer for the current block from the allocated blocks.
 
             byte[] blockData = new byte[Disk.BLOCK_SIZE];
+            // Prepare a buffer to hold the data for the current block.
+
             int length = Math.min(dataBytes.length - offset, Disk.BLOCK_SIZE);
+            // Determine the number of bytes to write to this block (may be less than block size).
+
             System.arraycopy(dataBytes, offset, blockData, 0, length);
+            //Copy the relevant portion of the data to the block buffer.
 
             System.out.printf("Writing %d bytes to disk %d, block %d\n", length, diskIndex, blockPointer);
+            // Log the write operation details (bytes written, disk index, block pointer).
+
             disks[diskIndex].writeDataBlock(blockData, blockPointer);
+            // Write the block data to the corresponding disk and block.
+
             offset += Disk.BLOCK_SIZE;
+            // Update the offset to point to the next chunk of data.
+
         }
 
         INode inode = diskDevice.readInode(fileDescriptor);
@@ -261,6 +282,8 @@ public class FileSystem {
         diskDevice.writeInode(inode, fileDescriptor);
 
         System.out.println("Finished writing data to file descriptor " + fileDescriptor + ".");
+        // Update the file metadata (inode) with the data size and block pointers,
+        // then write the updated inode back to the disk, and log the successful completion of the operation.
     }
 
 
